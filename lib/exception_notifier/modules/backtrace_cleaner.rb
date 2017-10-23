@@ -3,7 +3,7 @@ module ExceptionNotifier
 
     def clean_backtrace(exception)
       if defined?(Rails) && Rails.respond_to?(:backtrace_cleaner)
-        Rails.backtrace_cleaner.send(:filter, exception.backtrace)
+        Rails.backtrace_cleaner.clean(exception.backtrace, :silent)
       else
         exception.backtrace
       end
