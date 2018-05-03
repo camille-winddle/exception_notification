@@ -21,6 +21,9 @@ module ExceptionNotifier
     end
 
     def call(exception, options={})
+      old_channel = @notifier.config.defaults[:channel]
+      @notifier.config.defaults[:channel] = options[:channel] unless options[:channel].nil?
+
       errors_count = options[:accumulated_errors_count].to_i
       measure_word = errors_count > 1 ? errors_count : (exception.class.to_s =~ /^[aeiou]/i ? 'An' : 'A')
       exception_name = "*#{measure_word}* `#{exception.class.to_s}`"
@@ -64,6 +67,8 @@ module ExceptionNotifier
           @notifier.ping '', message_opts
         end
       end
+
+      @notifier.config.defaults[:channel] = old_channel
     end
 
     protected
