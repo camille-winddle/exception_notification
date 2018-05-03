@@ -6,24 +6,23 @@ module ExceptionNotifier
 
     def initialize(options)
       super
-      begin
-        @ignore_data_if = options[:ignore_data_if]
-        @backtrace_lines = options.fetch(:backtrace_lines, 10)
-        @additional_fields = options[:additional_fields]
+      @ignore_data_if = options[:ignore_data_if]
+      @backtrace_lines = options.fetch(:backtrace_lines, 10)
+      @additional_fields = options[:additional_fields]
+      @message_opts = options.fetch(:additional_parameters, {})
+      @color = @message_opts.delete(:color) { 'danger' }
+    ensure
+      @options = options
+      @notifiers = {}
+    end
 
-        webhook_url = options.fetch(:webhook_url)
-        @message_opts = options.fetch(:additional_parameters, {})
-        @color = @message_opts.delete(:color) { 'danger' }
-        @notifier = Slack::Notifier.new webhook_url, options
-      rescue
-        @notifier = nil
-      end
+    def notifier_for(options)
+      @notifiers[options.fetch(:channel)] ||= Slack::Notifier.new options.fetch(:webhook_url), options
     end
 
     def call(exception, options={})
-      old_channel = @notifier.config.defaults[:channel]
-      @notifier.config.defaults[:channel] = options[:channel] unless options[:channel].nil?
-
+      binding.pry
+      notifier = notifier_for(@options.merge(options))
       errors_count = options[:accumulated_errors_count].to_i
       measure_word = errors_count > 1 ? errors_count : (exception.class.to_s =~ /^[aeiou]/i ? 'An' : 'A')
       exception_name = "*#{measure_word}* `#{exception.class.to_s}`"
@@ -48,7 +47,8 @@ module ExceptionNotifier
       fields.push({ title: 'Hostname', value: Socket.gethostname })
 
       if exception.backtrace
-        formatted_backtrace = "```#{exception.backtrace.first(@backtrace_lines).join("\n")}```"
+        backtrace = exception.backtrace ? clean_backtrace(exception) : []
+        formatted_backtrace = "```#{backtrace.first(@backtrace_lines).join("\n")}```"
         fields.push({ title: 'Backtrace', value: formatted_backtrace })
       end
 
@@ -64,17 +64,15 @@ module ExceptionNotifier
 
       if valid?
         send_notice(exception, options, clean_message, @message_opts.merge(attachments: attchs)) do |msg, message_opts|
-          @notifier.ping '', message_opts
+          notifier.ping '', message_opts
         end
       end
-
-      @notifier.config.defaults[:channel] = old_channel
     end
 
     protected
 
     def valid?
-      !@notifier.nil?
+      !notifier_for(@options).nil?
     end
 
     def deep_reject(hash, block)
