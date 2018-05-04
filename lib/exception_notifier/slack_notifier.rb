@@ -16,7 +16,7 @@ module ExceptionNotifier
     end
 
     def notifier_for(options)
-        @notifiers[options.fetch(:channel)] ||= Slack::Notifier.new options.fetch(:webhook_url), options
+      @notifiers[options.fetch(:channel)] ||= Slack::Notifier.new options.fetch(:webhook_url), options
     rescue
       nil
     end
