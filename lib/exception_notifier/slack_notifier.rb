@@ -11,17 +11,17 @@ module ExceptionNotifier
       @additional_fields = options[:additional_fields]
       @message_opts = options.fetch(:additional_parameters, {})
       @color = @message_opts.delete(:color) { 'danger' }
-    ensure
       @options = options
       @notifiers = {}
     end
 
     def notifier_for(options)
-      @notifiers[options.fetch(:channel)] ||= Slack::Notifier.new options.fetch(:webhook_url), options
+        @notifiers[options.fetch(:channel)] ||= Slack::Notifier.new options.fetch(:webhook_url), options
+    rescue
+      nil
     end
 
     def call(exception, options={})
-      binding.pry
       notifier = notifier_for(@options.merge(options))
       errors_count = options[:accumulated_errors_count].to_i
       measure_word = errors_count > 1 ? errors_count : (exception.class.to_s =~ /^[aeiou]/i ? 'An' : 'A')
